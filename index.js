@@ -1243,7 +1243,3 @@ app.delete('/api/materias/:id', async (req, res) => {
     res.status(500).json({ success: false, message: 'Error al eliminar materia', error: err.message });
   }
 });
-
-console.log(`Servidor corriendo en puerto ${port}`);
-app.listen(port, () => {});
-
