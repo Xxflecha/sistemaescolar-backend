@@ -16,12 +16,14 @@ const port = process.env.PORT || 4000;
 app.use(cors());
 app.use(express.json());
 
+// Pool adaptado para Railway (usa SSL)
 const pool = new Pool({
   user: process.env.PGUSER,
   host: process.env.PGHOST,
   database: process.env.PGDATABASE,
   password: process.env.PGPASSWORD,
   port: process.env.PGPORT,
+  ssl: { rejectUnauthorized: false }
 });
 
 // Middleware para servir imágenes
@@ -540,5 +542,5 @@ app.get('/api/periodos', async (req, res) => {
 });
 
 app.listen(port, () => {
-  console.log(`Servidor corriendo en http://localhost:${port}`);
+  console.log(`Servidor corriendo en puerto ${port}`);
 });
