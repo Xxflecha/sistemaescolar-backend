@@ -563,8 +563,84 @@ app.get('/api/periodos', async (req, res) => {
   }
 });
 
+
+// Obtener todos los departamentos (para selects y edición de jefe)
+app.get('/api/departamentos', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM departamentos ORDER BY nombre');
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: 'Error al obtener departamentos', details: err.message });
+  }
+});
+
+// CRUD de materias (si tu frontend lo necesita)
+app.get('/api/materias', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM materias ORDER BY clave');
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: 'Error al obtener materias', details: err.message });
+  }
+});
+
+app.post('/api/materias', async (req, res) => {
+  const { clave, nombre, creditos, semestre, plan_estudios, area_formacion, horas_teoria, horas_practica } = req.body;
+  if (!clave || !nombre || !creditos || !semestre) {
+    return res.status(400).json({ success: false, message: 'Datos incompletos' });
+  }
+  try {
+    const result = await pool.query(
+      `INSERT INTO materias (clave, nombre, creditos, semestre, plan_estudios, area_formacion, horas_teoria, horas_practica)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+      [clave, nombre, creditos, semestre, plan_estudios, area_formacion, horas_teoria || 0, horas_practica || 0]
+    );
+    res.json({ success: true, materia: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Error al crear materia', error: err.message });
+  }
+});
+
+app.put('/api/materias/:id', async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  const campos = ['clave','nombre','creditos','semestre','plan_estudios','area_formacion','horas_teoria','horas_practica'];
+  const updates = [];
+  const values = [];
+  campos.forEach((campo) => {
+    let valor = req.body[campo];
+    if (valor !== undefined) {
+      updates.push(`${campo} = $${values.length + 1}`);
+      values.push(valor);
+    }
+  });
+  if (updates.length === 0) return res.status(400).json({ success: false, message: 'Sin datos para actualizar' });
+  values.push(id);
+  try {
+    const result = await pool.query(
+      `UPDATE materias SET ${updates.join(', ')} WHERE id = $${values.length} RETURNING *`,
+      values
+    );
+    if (result.rows.length === 0) return res.status(404).json({ success: false, message: 'Materia no encontrada' });
+    res.json({ success: true, materia: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Error al actualizar materia', error: err.message });
+  }
+});
+
+app.delete('/api/materias/:id', async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  try {
+    const result = await pool.query('DELETE FROM materias WHERE id = $1 RETURNING *', [id]);
+    if (result.rows.length === 0) return res.status(404).json({ success: false, message: 'Materia no encontrada' });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Error al eliminar materia', error: err.message });
+  }
+});
+
 app.listen(port, () => {
   console.log(`Servidor corriendo en puerto ${port}`);
 });
+
 
 
