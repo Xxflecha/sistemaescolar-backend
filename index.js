@@ -68,6 +68,28 @@ app.post('/login', async (req, res) => {
   }
 });
 
+// Endpoint para actualizar datos del jefe de departamento
+app.put('/jefe/:id', async (req, res) => {
+  const id = req.params.id;
+  const { nombre, apellido, departamento_nombre } = req.body;
+  if (!id || !nombre || !apellido || !departamento_nombre) {
+    return res.status(400).json({ success: false, message: 'Datos incompletos' });
+  }
+  try {
+    // Si tu tabla es jefes_departamento y el campo es departamento_id, ajusta según corresponda
+    const result = await pool.query(
+      `UPDATE jefes_departamento SET nombre = $1, apellido = $2, departamento_id = $3 WHERE id = $4 RETURNING *`,
+      [nombre, apellido, departamento_nombre, id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Jefe no encontrado' });
+    }
+    res.json({ success: true, jefe: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Error al actualizar jefe', error: err.message });
+  }
+});
+
 // Endpoint para obtener todos los docentes
 app.get('/api/docentes', async (req, res) => {
   try {
@@ -544,4 +566,5 @@ app.get('/api/periodos', async (req, res) => {
 app.listen(port, () => {
   console.log(`Servidor corriendo en puerto ${port}`);
 });
+
 
