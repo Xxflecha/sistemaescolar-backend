@@ -29,6 +29,9 @@ const pool = new Pool({
 // Middleware para servir imágenes
 app.use('/imagenes', express.static(path.join(process.cwd(), 'imagenes')));
 
+// Servir archivos estáticos (incluyendo tec.png) desde la carpeta del frontend
+app.use(express.static(path.join(process.cwd(), 'vscode-vfs://github/Xxflecha/sistemaescolar')));
+
 // Configuración de multer para guardar imágenes
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -340,25 +343,29 @@ app.get('/api/alumno-completo/:id', async (req, res) => {
     if (alumnoRes.rows.length === 0) return res.status(404).json({ error: 'Alumno no encontrado' });
     const alumno = alumnoRes.rows[0];
 
-    // Horario actual
-    const periodoActual = await getPeriodoActualNombre();
+    // Obtener el id del periodo actual
+    const periodoActualRes = await pool.query('SELECT id FROM periodo_actual LIMIT 1');
+    const periodoActualId = periodoActualRes.rows[0]?.id;
+    if (!periodoActualId) return res.status(404).json({ error: 'No hay periodo actual configurado' });
+
+    // Horario actual del alumno en el periodo actual
     const horarioRes = await pool.query(`
       SELECT h.*, m.clave AS clave_materia, m.nombre AS nombre_materia, m.creditos
       FROM horario h
       JOIN materias m ON h.materia_id = m.id
-      WHERE h.alumno_id = $1 AND h.periodo = $2
+      WHERE h.alumno_id = $1 AND h.periodo_id = $2
       ORDER BY m.clave ASC
-    `, [id, periodoActual]);
+    `, [id, periodoActualId]);
     alumno.horario = horarioRes.rows;
 
-    // Calificaciones actuales
+    // Calificaciones actuales del alumno en el periodo actual
     const califRes = await pool.query(`
       SELECT c.*, m.clave AS clave_materia, m.nombre AS nombre_materia, m.creditos
       FROM calificaciones c
       JOIN materias m ON c.materia_id = m.id
-      WHERE c.alumno_id = $1 AND c.periodo = $2
+      WHERE c.alumno_id = $1 AND c.periodo_id = $2
       ORDER BY m.clave ASC
-    `, [id, periodoActual]);
+    `, [id, periodoActualId]);
     alumno.calificaciones = califRes.rows;
 
     res.json(alumno);
@@ -563,8 +570,7 @@ app.get('/api/periodos', async (req, res) => {
   }
 });
 
-
-// Obtener todos los departamentos (para selects y edición de jefe)
+// Endpoint para obtener todos los departamentos (para selects y edición de jefe)
 app.get('/api/departamentos', async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM departamentos ORDER BY nombre');
@@ -638,9 +644,5 @@ app.delete('/api/materias/:id', async (req, res) => {
   }
 });
 
-app.listen(port, () => {
-  console.log(`Servidor corriendo en puerto ${port}`);
-});
-
-
-
+console.log(`Servidor corriendo en puerto ${port}`);
+app.listen(port, () => {});
